@@ -1,20 +1,13 @@
 {
     "name": "PhotonUnityNetworking.Editor",
-    "rootNamespace": "",
     "references": [
         "PhotonRealtime",
-        "PhotonUnityNetworking",
-        "Reunite"
+        "PhotonUnityNetworking"
     ],
+    "optionalUnityReferences": [],
     "includePlatforms": [
         "Editor"
     ],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
-    "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
-    "noEngineReferences": false
+    "allowUnsafeCode": false
 }

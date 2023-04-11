@@ -1,4 +1,4 @@
-﻿#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+﻿#if PHOTON_VOICE_WINDOWS || UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -82,7 +82,7 @@ namespace Photon.Voice.Windows
         // Otherwise recreate native object (instead of adding 'set callback' method to native interface)
         public void SetCallback(Action<short[]> callback, ObjectFactory<short[], int> bufferFactory)
         {
-            this.bufferFactory = bufferFactory;            
+            this.bufferFactory = bufferFactory;
             this.pushCallback = callback;
         }
 

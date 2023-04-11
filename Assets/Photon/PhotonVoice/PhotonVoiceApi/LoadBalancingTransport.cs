@@ -31,7 +31,7 @@ namespace Photon.Voice
     /// Extends LoadBalancingClient with media streaming functionality.
     /// </summary>
     /// <remarks>
-    /// Use your normal LoadBalancing workflow to join a Voice room. 
+    /// Use your normal LoadBalancing workflow to join a Voice room.
     /// All standard LoadBalancing features are available.
     /// Use <see cref="VoiceClient"/> to work with media streams.
     /// </remarks>
@@ -51,9 +51,10 @@ namespace Photon.Voice
         public void LogDebug(string fmt, params object[] args) { this.DebugReturn(DebugLevel.ALL, string.Format(fmt, args)); }
 
         // send different media type to different channels for efficiency
+        private Array codecEnumValues = Enum.GetValues(typeof(Codec));
         internal byte photonChannelForCodec(Codec c)
         {
-            return (byte)(1 + Array.IndexOf(Enum.GetValues(typeof(Codec)), c));
+            return (byte)(1 + Array.IndexOf(codecEnumValues, c));
         }
 
         public bool IsChannelJoined(int channelId) { return this.State == ClientState.Joined; }
@@ -124,16 +125,13 @@ namespace Photon.Voice
                     {
                         this.LoadBalancingPeer.OpChangeGroups(new byte[0], null);
                     }
-                }                
+                }
             }
         }
 
 
         #region nonpublic
 
-        object sendLock = new object();
-
-        //
         public void SendVoicesInfo(IEnumerable<LocalVoice> voices, int channelId, int targetPlayerId)
         {
             foreach (var codecVoices in voices.GroupBy(v => v.Info.Codec))
@@ -155,10 +153,8 @@ namespace Photon.Voice
                 {
                     opt.TargetActors = new int[] { targetPlayerId };
                 }
-                lock (sendLock)
-                {
-                    this.OpRaiseEvent(VoiceEvent.Code, content, opt, sendOpt);
-                }
+
+                this.OpRaiseEvent(VoiceEvent.Code, content, opt, sendOpt);
             }
         }
 
@@ -185,11 +181,8 @@ namespace Photon.Voice
             {
                 opt.Receivers = ReceiverGroup.All;
             }
-            lock (sendLock)
-            {
 
-                this.OpRaiseEvent(VoiceEvent.Code, content, opt, sendOpt);
-            }
+            this.OpRaiseEvent(VoiceEvent.Code, content, opt, sendOpt);
         }
 
         public virtual void SendFrame(ArraySegment<byte> data, FrameFlags flags, byte evNumber, byte voiceId, int channelId, int targetPlayerId, bool reliable, LocalVoice localVoice)
@@ -217,11 +210,9 @@ namespace Photon.Voice
                 opt.Receivers = ReceiverGroup.All;
             }
             opt.InterestGroup = localVoice.InterestGroup;
-            lock (sendLock)
-            {
-                this.OpRaiseEvent(VoiceEvent.Code, content, opt, sendOpt);
-            }
-            this.LoadBalancingPeer.SendOutgoingCommands();
+
+            this.OpRaiseEvent(VoiceEvent.Code, content, opt, sendOpt);
+            while (this.LoadBalancingPeer.SendOutgoingCommands()) ;
         }
 
         public string ChannelIdStr(int channelId) { return null; }
@@ -232,8 +223,8 @@ namespace Photon.Voice
             // check for voice event first
             if (ev.Code == VoiceEvent.Code)
             {
-                // Payloads are arrays. If first array element is 0 than next is event subcode. Otherwise, the event is data frame with voiceId in 1st element.                    
-                protocol.onVoiceEvent(ev[(byte)ParameterCode.CustomEventContent], VOICE_CHANNEL, ev.Sender, this.LocalPlayer.ActorNumber);
+                // Payloads are arrays. If first array element is 0 than next is event subcode. Otherwise, the event is data frame with voiceId in 1st element.
+                protocol.onVoiceEvent(ev[(byte)ParameterCode.CustomEventContent], VOICE_CHANNEL, ev.Sender, ev.Sender == this.LocalPlayer.ActorNumber);
             }
             else
             {
@@ -247,22 +238,22 @@ namespace Photon.Voice
                         }
                         else
                         {
-                            this.voiceClient.onPlayerJoin(VOICE_CHANNEL, playerId);                            
+                            this.voiceClient.onPlayerJoin(VOICE_CHANNEL, playerId);
                         }
                         break;
                     case (byte)EventCode.Leave:
+                    {
+                        playerId = ev.Sender;
+                        if (playerId == this.LocalPlayer.ActorNumber)
                         {
-                            playerId = ev.Sender;
-                            if (playerId == this.LocalPlayer.ActorNumber)
-                            {
-                                this.voiceClient.onLeaveAllChannels();
-                            }
-                            else
-                            {
-                                this.voiceClient.onPlayerLeave(VOICE_CHANNEL, playerId);
-                            }
+                            this.voiceClient.onLeaveAllChannels();
                         }
-                        break;
+                        else
+                        {
+                            this.voiceClient.onPlayerLeave(VOICE_CHANNEL, playerId);
+                        }
+                    }
+                    break;
                 }
             }
         }
@@ -286,7 +277,7 @@ namespace Photon.Voice
                     }
                     break;
             }
-        }        
+        }
 
         #endregion
 

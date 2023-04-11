@@ -27,7 +27,7 @@ namespace Photon.Voice
             this.LoadBalancingPeer.ReuseEventInstance = true;             // this won't store references to the event anyways
         }
 
-		const int DATA_OFFSET = 4;
+        const int DATA_OFFSET = 4;
         public override void SendFrame(ArraySegment<byte> data, FrameFlags flags, byte evNumber, byte voiceId, int channelId, int targetPlayerId, bool reliable, LocalVoice localVoice)
         {
             // this uses a pooled slice, which is released within the send method (here RaiseEvent at the bottom)
@@ -36,7 +36,7 @@ namespace Photon.Voice
             frameData.Buffer[1] = voiceId;
             frameData.Buffer[2] = evNumber;
             frameData.Buffer[3] = (byte)flags;
-            Buffer.BlockCopy(data.Array, 0, frameData.Buffer, DATA_OFFSET, data.Count);
+            Buffer.BlockCopy(data.Array, data.Offset, frameData.Buffer, DATA_OFFSET, data.Count);
             frameData.Count = data.Count + DATA_OFFSET; // need to set the count, as we manipulated the buffer directly
 
             SendOptions sendOpt = new SendOptions() { Reliability = reliable, Channel = this.photonChannelForCodec(localVoice.Info.Codec), Encrypt = localVoice.Encrypt };
@@ -60,7 +60,7 @@ namespace Photon.Voice
             this.OpRaiseEvent(VoiceEvent.FrameCode, frameData, opt, sendOpt);
 
             // each voice has it's own connection? else, we could aggregate voices data in less count of datagrams
-            this.LoadBalancingPeer.SendOutgoingCommands();
+            while (this.LoadBalancingPeer.SendOutgoingCommands()) ;
         }
 
 
@@ -77,11 +77,10 @@ namespace Photon.Voice
             }
         }
 
-
         internal void onVoiceFrameEvent(object content0, int channelId, int playerId, int localPlayerId)
         {
-            byte[] content = null;
-            int contentLength = 0;
+            byte[] content;
+            int contentLength;
             int sliceOffset = 0;
             ByteArraySlice slice = content0 as ByteArraySlice;
             if (slice != null)
@@ -114,15 +113,15 @@ namespace Photon.Voice
                 FrameBuffer buffer;
                 if (slice != null)
                 {
-                    buffer = new FrameBuffer(slice.Buffer, slice.Offset + dataOffset, contentLength - dataOffset, flags, () => slice.Release());
+                    buffer = new FrameBuffer(slice.Buffer, slice.Offset + dataOffset, contentLength - dataOffset, flags, slice);
                 }
                 else
                 {
                     buffer = new FrameBuffer(content, dataOffset, contentLength - dataOffset, flags, null);
                 }
-                
 
-                this.voiceClient.onFrame(channelId, playerId, voiceId, evNumber, buffer, playerId == localPlayerId);
+                this.voiceClient.onFrame(channelId, playerId, voiceId, evNumber, ref buffer, playerId == localPlayerId);
+                buffer.Release();
             }
         }
     }

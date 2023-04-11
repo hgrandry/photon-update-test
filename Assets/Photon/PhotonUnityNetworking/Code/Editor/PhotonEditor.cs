@@ -13,12 +13,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Reunite.Utils.Logs;
+
 using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEditor.Compilation;
 using UnityEngine;
-using Logger = Reunite.Utils.Logs.Logger;
 
 namespace Photon.Pun
 {
@@ -189,9 +188,13 @@ namespace Photon.Pun
             EditorApplication.playModeStateChanged -= PlayModeStateChanged;
             EditorApplication.playModeStateChanged += PlayModeStateChanged;
 
+            #if UNITY_2021_1_OR_NEWER
+            CompilationPipeline.compilationStarted -= OnCompileStarted21;
+            CompilationPipeline.compilationStarted += OnCompileStarted21;
+            #else
             CompilationPipeline.assemblyCompilationStarted -= OnCompileStarted;
             CompilationPipeline.assemblyCompilationStarted += OnCompileStarted;
-
+            #endif
 
             #if (UNITY_2018 || UNITY_2018_1_OR_NEWER)
             EditorApplication.projectChanged -= OnProjectChanged;
@@ -221,7 +224,7 @@ namespace Photon.Pun
             // Also, within the context of a Unity Cloud Build, ServerSettings is already present anyway.
             #if UNITY_CLOUD_BUILD
             return;
-            #endif
+            #else
 
             if (PhotonNetwork.PhotonServerSettings == null || PhotonNetwork.PhotonServerSettings.AppSettings == null || string.IsNullOrEmpty(PhotonNetwork.PhotonServerSettings.AppSettings.AppIdRealtime))
             {
@@ -244,7 +247,16 @@ namespace Photon.Pun
                 PhotonNetwork.PhotonServerSettings.DisableAutoOpenWizard = true;
                 PhotonEditor.SaveSettings();
             }
+            #endif
         }
+
+
+        #if UNITY_2021_1_OR_NEWER
+        private static void OnCompileStarted21(object obj)
+        {
+            OnCompileStarted(obj as string);
+        }
+        #endif
 
         private static void OnCompileStarted(string obj)
         {
@@ -253,7 +265,7 @@ namespace Photon.Pun
                 // log warning, unless there was one recently
                 if (EditorApplication.timeSinceStartup - lastWarning > 3)
                 {
-                    Logger.LogWarning<PhotonView>(CurrentLang.WarningPhotonDisconnect);
+                    Debug.LogWarning(CurrentLang.WarningPhotonDisconnect);
                     lastWarning = EditorApplication.timeSinceStartup;
                 }
 
@@ -264,6 +276,7 @@ namespace Photon.Pun
                 #endif
             }
         }
+
 
         [DidReloadScripts]
         private static void OnDidReloadScripts()

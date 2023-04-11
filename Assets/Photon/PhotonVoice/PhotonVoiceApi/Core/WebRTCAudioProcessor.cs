@@ -74,8 +74,8 @@ namespace Photon.Voice
                     {
                         logger.LogError("[PV] WebRTCAudioProcessor: new AGCCompressionGain value {0} not in range [0..90]", value);
                     }
-                    else 
-                    { 
+                    else
+                    {
                         agcCompressionGain = value;
                         if (proc != IntPtr.Zero)
                         {
@@ -197,7 +197,7 @@ namespace Photon.Voice
 #else
                         var t = new Thread(ReverseStreamThread);
                         t.Start();
-                        t.Name = "WebRTCAudioProcessor reverse stream";
+                        Util.SetThreadName(t, "[PV] WebRTCProcRevStream");
 #endif
                     }
 
@@ -251,6 +251,7 @@ namespace Photon.Voice
         public void OnAudioOutFrameFloat(float[] data)
         {
             if (disposed) return;
+            if (!aecInited) return;
             if (proc == IntPtr.Zero) return;
             foreach (var reverseBufFloat in reverseFramer.Frame(data))
             {
@@ -290,9 +291,9 @@ namespace Photon.Voice
                 {
                     reverseStreamQueueReady.WaitOne(); // Wait until data is pushed to the queue or Dispose signals.
 
-                    //#if UNITY_5_3_OR_NEWER
-                    //                    UnityEngine.Profiling.Profiler.BeginSample("Encoder");
-                    //#endif
+#if UNITY_5_3_OR_NEWER // #if UNITY
+                    // UnityEngine.Profiling.Profiler.BeginSample("Encoder");
+#endif
 
                     while (true) // Dequeue and process while the queue is not empty
                     {
@@ -334,6 +335,7 @@ namespace Photon.Voice
 
         private int setParam(Param param, int v)
         {
+            if (disposed) return 0;
             logger.LogInfo("[PV] WebRTCAudioProcessor: setting param " + param + "=" + v);
             return webrtc_audio_processor_set_param(proc, (int)param, v);
         }
@@ -425,7 +427,7 @@ namespace Photon.Voice
             NS_LEVEL = 42,
 
             AGC = 51,
-//            AGC_MODE = 52,
+            // AGC_MODE = 52,
             AGC_TARGET_LEVEL_DBFS = 55,
             AGC_COMPRESSION_GAIN = 56,
             AGC_LIMITER = 57,

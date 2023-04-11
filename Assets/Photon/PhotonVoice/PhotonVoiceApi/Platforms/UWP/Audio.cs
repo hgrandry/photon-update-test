@@ -31,7 +31,7 @@ namespace Photon.Voice.UWP
             }
             catch (AggregateException e)
             {
-                logger.LogError("[PV] [AI] Device initialization Error: " + e);
+                logger.LogError("[PV] [AI] Device initialization Error: (HResult=" + e.HResult + ") " + e);
                 e.Handle((x) =>
                 {
                     if (x is UnauthorizedAccessException)
@@ -39,13 +39,13 @@ namespace Photon.Voice.UWP
                         ErrorAccess = true;
                     }
                     Error = x.Message;
-                    logger.LogError("[PV] [AI] Device initialization Error (Inner Level 2): " + e);
+                    logger.LogError("[PV] [AI] Device initialization Error (Inner Level 2): (HResult=" + x.HResult + ") " + x);
                     if (x is AggregateException)
                     {
                         (x as AggregateException).Handle((y) =>
                         {
                             Error = y.Message;
-                            logger.LogError("[PV] [AI] Device initialization Error (Inner Level 3): " + y);
+                            logger.LogError("[PV] [AI] Device initialization Error (Inner Level 3): (HResult=" + y.HResult + ") " + y);
                             return true;
                         });
                     }
@@ -91,7 +91,7 @@ namespace Photon.Voice.UWP
 
             device.StartRecordingAsync(mep, (buf, flags) =>
             {
-                    //                    logger.LogInfo("[PV] [AI] " + buf.Length + ": " + BitConverter.ToString(buf, 0, buf.Length > 20 ? 20 : buf.Length));
+                // logger.LogInfo("[PV] [AI] " + buf.Length + ": " + BitConverter.ToString(buf, 0, buf.Length > 20 ? 20 : buf.Length));
                 if (buf != null)
                 {
                     var sb = bufferFactory.New(buf.Length / 2);

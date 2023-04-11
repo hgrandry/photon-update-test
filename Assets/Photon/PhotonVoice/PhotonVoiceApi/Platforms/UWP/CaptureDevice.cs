@@ -10,9 +10,9 @@ using Windows.Media.MediaProperties;
 namespace Photon.Voice.UWP
 {
     public delegate void MediaCaptureInitConmpleted(MediaCapture mediaCpture, bool ok);
-    
+
     class CaptureDevice
-    {        
+    {
         public enum Media
         {
             Audio,
@@ -42,7 +42,7 @@ namespace Photon.Voice.UWP
         }
 
         /// <summary>
-        ///  Handler for the wrapped MediaCapture object's Failed event. It just wraps and forward's MediaCapture's 
+        ///  Handler for the wrapped MediaCapture object's Failed event. It just wraps and forward's MediaCapture's
         ///  Failed event as own CaptureFailed event
         /// </summary>
         private void mediaCapture_Failed(MediaCapture sender, MediaCaptureFailedEventArgs errorEventArgs)
@@ -76,15 +76,10 @@ namespace Photon.Voice.UWP
 
         public void Initialize()
         {
-            var t = InitializeAsync();
-            t.Wait();
-            if (t.Exception != null)
-            {
-                throw t.Exception;
-            }
+            InitializeAsync();
         }
 
-        public async Task InitializeAsync()
+        public void InitializeAsync()
         {
             try
             {
@@ -291,6 +286,54 @@ namespace Photon.Voice.UWP
             }
 
             return cameraFound;
+        }
+    }
+
+    public class DeviceEnumerator : DeviceEnumeratorBase
+    {
+        Windows.Devices.Enumeration.DeviceClass deviceClass;
+
+        public DeviceEnumerator(ILogger logger, Windows.Devices.Enumeration.DeviceClass deviceClass) : base(logger)
+        {
+            this.deviceClass = deviceClass;
+            Refresh();
+        }
+
+        public override void Refresh()
+        {
+            var op = Windows.Devices.Enumeration.DeviceInformation.FindAllAsync(deviceClass);
+            op.AsTask().Wait();
+            if (op.Status == Windows.Foundation.AsyncStatus.Error)
+            {
+                Error = op.ErrorCode.Message;
+                return;
+            }
+            var r = op.GetResults();
+            devices = new System.Collections.Generic.List<DeviceInfo>();
+            for (int i = 0; i < r.Count; i++)
+            {
+                devices.Add(new DeviceInfo(r[i].Id, r[i].Name));
+            }
+        }
+
+        public override void Dispose()
+        {
+        }
+    }
+
+    public class AudioInEnumerator : DeviceEnumerator
+    {
+        public AudioInEnumerator(ILogger logger)
+            : base(logger, Windows.Devices.Enumeration.DeviceClass.AudioCapture)
+        {
+        }
+    }
+
+    public class VideoInEnumerator : DeviceEnumerator
+    {
+        public VideoInEnumerator(ILogger logger)
+            : base(logger, Windows.Devices.Enumeration.DeviceClass.VideoCapture)
+        {
         }
     }
 }
